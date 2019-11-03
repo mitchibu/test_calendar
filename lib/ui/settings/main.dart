@@ -3,13 +3,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../view/preference_view.dart';
 
-typedef PreferenceBuilder = Preference Function(SharedPreferences sp);
+typedef PreferenceBuilder = Widget Function(SharedPreferences sp);
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => SettingsPageState();
+}
+
+class SettingsPageState extends State<SettingsPage> {
   final preferences = <PreferenceBuilder>[
     (sp) => TextPreference(sp, 'key_text', 'text'),
     (sp) => SwitchPreference(sp, 'key_switch', 'switch'),
   ];
+
+  @override
+  void initState() {
+    preferences.add((sp) => ListTile(
+          title: Text('Reset'),
+          onTap: () {
+            sp.clear();
+            setState(() {});
+          },
+        ));
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(

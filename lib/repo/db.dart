@@ -7,18 +7,13 @@ import 'package:sembast/sembast_io.dart';
 
 import 'model/model.dart';
 
-class DatabaseRepositoty {
+class DatabaseRepository {
   Database _database;
-  DatabaseRepositoty() {
-    _test();
-  }
 
   Future<Database> get _db async {
     if (_database == null) {
       var dir = await getApplicationDocumentsDirectory();
-      // make sure it exists
       await dir.create(recursive: true);
-      // build the database path
       var dbPath = join(dir.path, 'my_database.db');
       DatabaseFactory dbFactory = databaseFactoryIo;
       _database = await dbFactory.openDatabase(dbPath);
@@ -26,6 +21,33 @@ class DatabaseRepositoty {
     return _database;
   }
 
+  Future<List<Calendar>> findCalendar(
+      DateTime startDate, DateTime endDate) async {
+    var list = List<Calendar>();
+    var store = intMapStoreFactory.store('calendar');
+    var records = await store.find(await _db,
+        finder: Finder(
+          filter: Filter.and([
+            Filter.greaterThanOrEquals(
+                'date', startDate.millisecondsSinceEpoch),
+            Filter.lessThanOrEquals('date', endDate.millisecondsSinceEpoch)
+          ]),
+        ));
+    records.forEach((record) {
+      list.add(Calendar.fromJson(record.value)..id = record.key);
+    });
+    return list;
+  }
+
+  Future putCalendar(Calendar calendar) async {
+    var store = intMapStoreFactory.store('calendar');
+    if (calendar.id == null) {
+      return store.add(await _db, calendar.toJson());
+    } else {
+      return store.record(calendar.id).put(await _db, calendar.toJson());
+    }
+  }
+/*
   Future<List<Shop>> get fetch async {
     var list = List<Shop>();
     var store = intMapStoreFactory.store('shop');
@@ -86,5 +108,5 @@ class DatabaseRepositoty {
     // records.forEach((record) {
     //   print(record.toString());
     // });
-  }
+  }*/
 }

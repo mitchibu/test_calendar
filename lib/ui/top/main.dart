@@ -45,7 +45,7 @@ class CalendarPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Provider<CalendarModel>(
         builder: (_) =>
-            CalendarModel(Provider.of<AppModel>(context).sampleRepository),
+            CalendarModel(Provider.of<AppModel>(context).databaseRepository),
         dispose: (_, model) => model.dispose(),
         child: Builder(
           builder: (context) => _build(context),

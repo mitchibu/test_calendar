@@ -6,6 +6,19 @@ part of 'model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+Calendar _$CalendarFromJson(Map<String, dynamic> json) {
+  return Calendar(
+      date: json['date'] as int,
+      color: json['color'] as int,
+      icons: (json['icons'] as List)?.map((e) => e as String)?.toList());
+}
+
+Map<String, dynamic> _$CalendarToJson(Calendar instance) => <String, dynamic>{
+      'date': instance.date,
+      'color': instance.color,
+      'icons': instance.icons
+    };
+
 Shop _$ShopFromJson(Map<String, dynamic> json) {
   return Shop(json['name'] as String, json['price'] as int);
 }

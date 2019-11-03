@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import 'model.dart';
 import 'repo/db.dart';
-import 'repo/sample.dart';
 import 'ui/splash/main.dart';
 import 'ui/top/main.dart';
 
@@ -18,8 +17,7 @@ class MyApp extends StatelessWidget {
           await Future<dynamic>.delayed(Duration(milliseconds: 2000));
           return AppModel(
             packageInfo: await PackageInfo.fromPlatform(),
-            sampleRepository: SampleRepository(),
-            databaseRepositoty: DatabaseRepositoty(),
+            databaseRepository: DatabaseRepository(),
           );
         },
         child: Consumer<AppModel>(

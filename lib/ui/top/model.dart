@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import '../../repo/sample.dart';
+import '../../repo/db.dart';
 import '../../util/bloc.dart';
 import '../../repo/model/model.dart';
 
 class CalendarModel extends BlocModel {
   CalendarModel(this.repository) : super();
 
-  final SampleRepository repository;
+  final DatabaseRepository repository;
 
   final _navigationController = StreamController<int>();
   Stream<int> get navigation => _navigationController.stream;
@@ -18,10 +18,7 @@ class CalendarModel extends BlocModel {
   final _calendarController = StreamController<Map<DateTime, DayInfo>>();
   Stream<Map<DateTime, DayInfo>> get calendar => _calendarController.stream;
 
-  final test = <DateTime, DayInfo>{
-    DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day):
-        DayInfo()..color = 0xffff0000
-  };
+  final data = Map<DateTime, DayInfo>();
 
   void dispose() {
     super.dispose();
@@ -31,17 +28,33 @@ class CalendarModel extends BlocModel {
   }
 
   @override
-  void onEvent(Event event) {
+  void onEvent(Event event) async {
     print('onEvent: $event');
     if (event is UpdateCalendarEvent) {
-      test[event.date] = event.data;
-      _calendarController.sink.add(test);
+      data[event.date] = event.data;
+      final calendar = Calendar(
+        id: event.data.id,
+        date: event.date.millisecondsSinceEpoch,
+        color: event.data.color,
+        icons: event.data.icons,
+      );
+      repository.putCalendar(calendar);
+      _calendarController.sink.add(data);
     } else if (event is UpdateNavigationEvent) {
       _navigationController.sink.add(event.position);
       _paletteController.sink.add(event.position);
     } else if (event is LoadCalendarEvent) {
+      data.clear();
       print('load: ${event.startDate} - ${event.endDate}');
-      _calendarController.sink.add(test);
+      final calendar =
+          await repository.findCalendar(event.startDate, event.endDate);
+      calendar.forEach((item) {
+        final day = DayInfo();
+        day.color = item.color;
+        day.icons.addAll(item.icons);
+        data[DateTime.fromMillisecondsSinceEpoch(item.date)] = day;
+      });
+      _calendarController.sink.add(data);
     }
   }
 }

@@ -2,16 +2,27 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'model.g.dart';
 
-class DayInfo {
-  var isHover = false;
-  var color = 0;
-  var icons = List<String>();
+@JsonSerializable()
+class Calendar {
+  Calendar({this.id, this.date, this.color, this.icons});
+
+  @JsonKey(ignore: true)
+  int id;
+  int date;
+  int color;
+  List<String> icons;
+
+  factory Calendar.fromJson(Map<String, dynamic> json) =>
+      _$CalendarFromJson(json);
+  Map<String, dynamic> toJson() => _$CalendarToJson(this);
 }
 
-const kTypeTop = 0;
-const kTypeLogin = 1;
-const kTypeDbList = 2;
-const kTypeGrid = 3;
+class DayInfo {
+  int id;
+  bool isHover = false;
+  int color = 0;
+  List<String> icons = List<String>();
+}
 
 class Item {
   Item(this.title, this.type);
