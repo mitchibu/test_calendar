@@ -4,13 +4,14 @@ part 'model.g.dart';
 
 @JsonSerializable()
 class Calendar {
-  Calendar({this.id, this.date, this.color, this.icons});
+  Calendar({this.id, this.date, this.color, this.icons, this.memo});
 
   @JsonKey(ignore: true)
   int id;
   int date;
   int color;
   List<String> icons;
+  String memo;
 
   factory Calendar.fromJson(Map<String, dynamic> json) =>
       _$CalendarFromJson(json);
@@ -22,6 +23,7 @@ class DayInfo {
   bool isHover = false;
   int color = 0;
   List<String> icons = List<String>();
+  String memo;
 }
 
 class Item {

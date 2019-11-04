@@ -37,6 +37,7 @@ class CalendarModel extends BlocModel {
         date: event.date.millisecondsSinceEpoch,
         color: event.data.color,
         icons: event.data.icons,
+        memo: event.data.memo,
       );
       repository.putCalendar(calendar);
       _calendarController.sink.add(data);
@@ -52,6 +53,7 @@ class CalendarModel extends BlocModel {
         final day = DayInfo();
         day.color = item.color;
         day.icons.addAll(item.icons);
+        day.memo = item.memo;
         data[DateTime.fromMillisecondsSinceEpoch(item.date)] = day;
       });
       _calendarController.sink.add(data);

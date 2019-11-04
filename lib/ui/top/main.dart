@@ -1,7 +1,9 @@
 import 'dart:math';
 
+import 'package:calendar/util/bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:jiffy/jiffy.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +12,8 @@ import '../../repo/model/model.dart';
 import '../view/calendar_carousel_view.dart';
 import '../settings/main.dart';
 import 'model.dart';
+
+const _kTitleTextSize = 18.0;
 
 class _WeekDay {
   const _WeekDay(this.name, this.color);
@@ -26,20 +30,6 @@ class CalendarPage extends StatelessWidget {
     DateTime.thursday: _WeekDay('thu', Colors.black),
     DateTime.friday: _WeekDay('fri', Colors.black),
     DateTime.saturday: _WeekDay('sat', Colors.blue),
-  };
-  static const _kMonth = {
-    DateTime.january: 'Jun',
-    DateTime.february: 'Feb',
-    DateTime.march: 'Mar',
-    DateTime.april: 'Apl',
-    DateTime.may: 'May',
-    DateTime.june: 'Jun',
-    DateTime.july: 'Jul',
-    DateTime.august: 'Aug',
-    DateTime.september: 'Sep',
-    DateTime.october: 'Oct',
-    DateTime.november: 'Nov',
-    DateTime.december: 'Dec',
   };
 
   @override
@@ -148,8 +138,8 @@ class CalendarPage extends StatelessWidget {
         height: 30,
         child: Center(
           child: Text(
-            '${_kMonth[date.month]} ${date.year}',
-            style: TextStyle(fontSize: 18),
+            Jiffy(date).yMMM,
+            style: TextStyle(fontSize: _kTitleTextSize),
           ),
         ),
       );
@@ -186,23 +176,44 @@ class CalendarPage extends StatelessWidget {
         final dayContent = List<Widget>.generate(
             min(4, info == null ? 0 : info.icons.length),
             (i) => SvgPicture.asset(info.icons[i]));
-        return Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: borderColor, width: isHover ? 2 : 0.5),
-            color: info == null ? Colors.transparent : Color(info.color),
-          ),
-          child: Column(
-            children: <Widget>[
-              Row(
-                children: dayHeader,
-              ),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  children: dayContent,
+        final container = <Widget>[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor, width: isHover ? 2 : 0.5),
+              color: info == null ? Colors.transparent : Color(info.color),
+            ),
+            child: Column(
+              children: <Widget>[
+                Row(
+                  children: dayHeader,
                 ),
-              ),
-            ],
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    children: dayContent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ];
+        if (data != null && data.memo != null && data.memo.isNotEmpty) {
+          container.add(Align(
+            alignment: Alignment.topRight,
+            child: SvgPicture.asset(
+              'assets/ribon.svg',
+              width: 10,
+              height: 10,
+            ),
+          ));
+        }
+        return GestureDetector(
+          onLongPress: () => openModalBottomSheet(
+            context: context,
+            child: _buildBottomSheet(context, date, data),
+          ),
+          child: Stack(
+            children: container,
           ),
         );
       },
@@ -235,6 +246,87 @@ class CalendarPage extends StatelessWidget {
 
   Widget _buildPalette(int mode) =>
       mode == 0 ? IconPalleteView() : ColorPalleteView();
+
+  final _formKey = GlobalKey<FormState>();
+  Widget _buildBottomSheet(BuildContext context, DateTime date, DayInfo data) =>
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            Jiffy(date).yMMMd,
+            style: TextStyle(fontSize: _kTitleTextSize),
+          ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Text('memo'),
+          ),
+          Form(
+            key: _formKey,
+            child: TextFormField(
+              keyboardType: TextInputType.multiline,
+              maxLines: null,
+              textAlign: TextAlign.start,
+              decoration: InputDecoration(
+                contentPadding: EdgeInsets.all(8.0),
+                border: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black),
+                ),
+              ),
+              initialValue: data == null ? '' : data.memo,
+              onFieldSubmitted: (data) {
+                _done(context, false);
+              },
+              onSaved: (text) async {
+                var info = data ?? DayInfo();
+                info.memo = text;
+                Provider.of<CalendarModel>(context)
+                    .post(UpdateCalendarEvent(date, info));
+              },
+            ),
+          ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                  ),
+                  child: RaisedButton(
+                    child: Text('Cancel'),
+                    color: Colors.white,
+                    shape: StadiumBorder(
+                      side: BorderSide(color: Colors.green),
+                    ),
+                    onPressed: () => _done(context, true),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                  ),
+                  child: RaisedButton(
+                    child: Text('ok'),
+                    color: Colors.white,
+                    shape: StadiumBorder(
+                      side: BorderSide(color: Colors.green),
+                    ),
+                    onPressed: () => _done(context, false),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+  void _done(BuildContext context, bool isCancel) {
+    if (!isCancel) {
+      _formKey.currentState.save();
+    }
+    Navigator.of(context).pop();
+  }
 }
 
 abstract class Palette {
