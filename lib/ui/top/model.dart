@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:calendar/repo/preference.dart';
+
 import '../../repo/db.dart';
 import '../../util/bloc.dart';
 import '../../repo/model/model.dart';
 
 class CalendarModel extends BlocModel {
-  CalendarModel(this.repository) : super();
+  CalendarModel(this.repository, this.preferenceRepository) : super();
 
   final DatabaseRepository repository;
+  final PreferenceRepository preferenceRepository;
 
   final _navigationController = StreamController<int>();
   Stream<int> get navigation => _navigationController.stream;
@@ -29,7 +32,6 @@ class CalendarModel extends BlocModel {
 
   @override
   void onEvent(Event event) async {
-    print('onEvent: $event');
     if (event is UpdateCalendarEvent) {
       data[event.date] = event.data;
       final calendar = Calendar(
@@ -42,11 +44,13 @@ class CalendarModel extends BlocModel {
       repository.putCalendar(calendar);
       _calendarController.sink.add(data);
     } else if (event is UpdateNavigationEvent) {
+      preferenceRepository.setLastPalette(event.position);
       _navigationController.sink.add(event.position);
       _paletteController.sink.add(event.position);
     } else if (event is LoadCalendarEvent) {
+      final date = event.startDate.add(Duration(days: DateTime.daysPerWeek));
+      preferenceRepository.setlastDate(DateTime(date.year, date.month, 1));
       data.clear();
-      print('load: ${event.startDate} - ${event.endDate}');
       final calendar =
           await repository.findCalendar(event.startDate, event.endDate);
       calendar.forEach((item) {

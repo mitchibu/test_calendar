@@ -6,9 +6,14 @@ import '../../util/bottom_sheet.dart';
 typedef PreferenceStateBuilder = State<StatefulWidget> Function();
 
 abstract class Preference extends StatefulWidget {
-  Preference(this.builder, this.sp, this.id, this.title);
+  Preference({
+    @required this.builder,
+    @required this.sharedPreferences,
+    @required this.id,
+    @required this.title,
+  });
   final PreferenceStateBuilder builder;
-  final SharedPreferences sp;
+  final SharedPreferences sharedPreferences;
   final String id;
   final String title;
 
@@ -19,12 +24,38 @@ abstract class Preference extends StatefulWidget {
   Widget buildSubTitle() => null;
 }
 
-class TextPreference extends Preference {
-  TextPreference(SharedPreferences sp, String id, String title)
-      : super(() => _TextPreferenceState(), sp, id, title);
+class DialogPreference extends Preference {
+  DialogPreference({
+    @required PreferenceStateBuilder builder,
+    @required SharedPreferences sharedPreferences,
+    @required String id,
+    @required String title,
+    this.onTap,
+  }) : super(
+          builder: builder,
+          sharedPreferences: sharedPreferences,
+          id: id,
+          title: title,
+        );
+  final GestureTapCallback onTap;
+}
+
+class TextPreference extends DialogPreference {
+  TextPreference({
+    @required SharedPreferences sharedPreferences,
+    @required String id,
+    @required String title,
+    GestureTapCallback onTap,
+  }) : super(
+          builder: () => _TextPreferenceState(),
+          sharedPreferences: sharedPreferences,
+          id: id,
+          title: title,
+          onTap: onTap,
+        );
 
   @override
-  Widget buildSubTitle() => Text(sp.getString(id) ?? '');
+  Widget buildSubTitle() => Text(sharedPreferences.getString(id) ?? '');
 }
 
 class _TextPreferenceState extends State<TextPreference> {
@@ -48,13 +79,13 @@ class _TextPreferenceState extends State<TextPreference> {
           Form(
             key: _formKey,
             child: TextFormField(
-              initialValue: widget.sp.getString(widget.id),
+              initialValue: widget.sharedPreferences.getString(widget.id),
               onFieldSubmitted: (data) {
                 _done(false);
               },
               onSaved: (data) async {
                 print(data);
-                await widget.sp.setString(widget.id, data);
+                await widget.sharedPreferences.setString(widget.id, data);
                 setState(() {});
               },
             ),
@@ -105,8 +136,16 @@ class _TextPreferenceState extends State<TextPreference> {
 }
 
 class SwitchPreference extends Preference {
-  SwitchPreference(SharedPreferences sp, String id, String title)
-      : super(() => _SwitchPreferenceState(), sp, id, title);
+  SwitchPreference({
+    @required SharedPreferences sharedPreferences,
+    @required String id,
+    @required String title,
+  }) : super(
+          builder: () => _SwitchPreferenceState(),
+          sharedPreferences: sharedPreferences,
+          id: id,
+          title: title,
+        );
 }
 
 class _SwitchPreferenceState extends State<SwitchPreference> {
@@ -114,9 +153,9 @@ class _SwitchPreferenceState extends State<SwitchPreference> {
   Widget build(BuildContext context) => SwitchListTile(
         title: widget.buildTitle(),
         subtitle: widget.buildSubTitle(),
-        value: widget.sp.getBool(widget.id) ?? false,
+        value: widget.sharedPreferences.getBool(widget.id) ?? false,
         onChanged: (data) async {
-          await widget.sp.setBool(widget.id, data);
+          await widget.sharedPreferences.setBool(widget.id, data);
           setState(() {});
         },
       );

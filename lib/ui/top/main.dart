@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:calendar/util/bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:jiffy/jiffy.dart';
+import 'package:intl/intl.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 
@@ -14,28 +14,19 @@ import '../settings/main.dart';
 import 'model.dart';
 
 const _kTitleTextSize = 18.0;
+const _kCalendarTitleHeight = 30.0;
 
-class _WeekDay {
-  const _WeekDay(this.name, this.color);
-  final String name;
-  final Color color;
+class CalendarPage extends StatefulWidget {
+  @override
+  CalendarPageState createState() => CalendarPageState();
 }
 
-class CalendarPage extends StatelessWidget {
-  static const _kWeekDay = {
-    DateTime.sunday: _WeekDay('sun', Colors.red),
-    DateTime.monday: _WeekDay('mon', Colors.black),
-    DateTime.tuesday: _WeekDay('tue', Colors.black),
-    DateTime.wednesday: _WeekDay('wed', Colors.black),
-    DateTime.thursday: _WeekDay('thu', Colors.black),
-    DateTime.friday: _WeekDay('fri', Colors.black),
-    DateTime.saturday: _WeekDay('sat', Colors.blue),
-  };
-
+class CalendarPageState extends State<CalendarPage> {
   @override
   Widget build(BuildContext context) => Provider<CalendarModel>(
-        builder: (_) =>
-            CalendarModel(Provider.of<AppModel>(context).databaseRepository),
+        builder: (_) => CalendarModel(
+            Provider.of<AppModel>(context).databaseRepository,
+            Provider.of<AppModel>(context).preferenceRepository),
         dispose: (_, model) => model.dispose(),
         child: Builder(
           builder: (context) => _build(context),
@@ -51,17 +42,31 @@ class CalendarPage extends StatelessWidget {
           child: _buildBody(context),
         ),
         bottomNavigationBar: StreamBuilder<int>(
-          initialData: 0,
+          initialData:
+              Provider.of<AppModel>(context).preferenceRepository.lastPalette,
           stream: Provider.of<CalendarModel>(context).navigation,
           builder: (context, snapshot) => BottomNavigationBar(
+            backgroundColor: Provider.of<AppModel>(context)
+                .preferenceRepository
+                .colorBackground,
             currentIndex: snapshot.data,
             items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.ac_unit),
+                icon: SvgPicture.asset(
+                  'assets/icon.svg',
+                  color: snapshot.data == 0
+                      ? Theme.of(context).accentColor
+                      : Theme.of(context).disabledColor,
+                ),
                 title: Text('icons'),
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.accessibility),
+                icon: SvgPicture.asset(
+                  'assets/palette.svg',
+                  color: snapshot.data == 1
+                      ? Theme.of(context).accentColor
+                      : Theme.of(context).disabledColor,
+                ),
                 title: Text('colors'),
               ),
             ],
@@ -73,45 +78,55 @@ class CalendarPage extends StatelessWidget {
         ),
       );
 
-  Widget _buildBody(BuildContext context) => Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Stack(
-          children: <Widget>[
-            Column(
-              children: <Widget>[
-                Expanded(
-                  child: _buildCalendar(context),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: StreamBuilder<int>(
-                    initialData: 0,
-                    stream: Provider.of<CalendarModel>(context).palette,
-                    builder: (context, snapshot) =>
-                        _buildPalette(snapshot.data),
+  Widget _buildBody(BuildContext context) => Container(
+        color:
+            Provider.of<AppModel>(context).preferenceRepository.colorBackground,
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Stack(
+            children: <Widget>[
+              Column(
+                children: <Widget>[
+                  Expanded(
+                    child: _buildCalendar(context),
                   ),
-                ),
-              ],
-            ),
-            Align(
-              alignment: Alignment.topRight,
-              child: SizedBox(
-                height: 30,
-                child: IconButton(
-                  padding: EdgeInsets.all(0),
-                  icon: Icon(Icons.settings),
-                  onPressed: () {
-                    Navigator.of(context).push<dynamic>(
-                      PageTransition<dynamic>(
-                        type: PageTransitionType.downToUp,
-                        child: SettingsPage(),
-                      ),
-                    );
-                  },
-                ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: StreamBuilder<int>(
+                      initialData: Provider.of<AppModel>(context)
+                          .preferenceRepository
+                          .lastPalette,
+                      stream: Provider.of<CalendarModel>(context).palette,
+                      builder: (context, snapshot) =>
+                          _buildPalette(snapshot.data),
+                    ),
+                  ),
+                ],
               ),
-            )
-          ],
+              Align(
+                alignment: Alignment.topRight,
+                child: _buildSetting(context),
+              )
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildSetting(BuildContext context) => SizedBox(
+        height: _kCalendarTitleHeight,
+        child: IconButton(
+          padding: EdgeInsets.all(0),
+          icon: Icon(Icons.settings),
+          onPressed: () {
+            Navigator.of(context).push<dynamic>(
+              PageTransition<dynamic>(
+                type: PageTransitionType.downToUp,
+                //child: PreferencePage(),
+                child: TestPage(),
+              ),
+            );
+            setState(() {});
+          },
         ),
       );
 
@@ -119,46 +134,88 @@ class CalendarPage extends StatelessWidget {
       StreamBuilder<Map<DateTime, DayInfo>>(
         stream: Provider.of<CalendarModel>(context).calendar,
         builder: (context, snapshot) => CalendarCarouselView<DayInfo>(
-          date: DateTime.now(),
+          date: Provider.of<AppModel>(context).preferenceRepository.lastDate,
           dayHeaderWidgetBuilder: _buildDayHeader,
           weekDayBuilder: _buildWeekDay,
           dayBuilder: _buildDay,
-          onPageShow: _onPageShow,
+          onPageShow: (context, startDateTime, endDateTime) {
+            Provider.of<CalendarModel>(context)
+                .post(LoadCalendarEvent(startDateTime, endDateTime));
+          },
           data: snapshot.data,
         ),
       );
 
-  void _onPageShow(
-      BuildContext context, DateTime startDateTime, DateTime endDateTime) {
-    Provider.of<CalendarModel>(context)
-        .post(LoadCalendarEvent(startDateTime, endDateTime));
-  }
+  Widget _buildDayHeader(BuildContext context, DateTime date) =>
+      CalendarHeaderView(date);
 
-  Widget _buildDayHeader(BuildContext context, DateTime date) => Container(
-        height: 30,
+  Widget _buildWeekDay(BuildContext context, int weekday) =>
+      WeekdayView(weekday);
+
+  Widget _buildDay(
+          BuildContext context, bool isInside, DateTime date, DayInfo data) =>
+      DayView(isInside, date, data);
+
+  Widget _buildPalette(int mode) =>
+      mode == 0 ? IconPalleteView() : ColorPalleteView();
+}
+
+class CalendarHeaderView extends StatelessWidget {
+  CalendarHeaderView(this.date);
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: _kCalendarTitleHeight,
         child: Center(
           child: Text(
-            Jiffy(date).yMMM,
+            DateFormat.yMMM().format(date),
             style: TextStyle(fontSize: _kTitleTextSize),
           ),
         ),
       );
+}
 
-  Widget _buildWeekDay(BuildContext context, int weekday) => Center(
-        child: Text(
-          _kWeekDay[weekday].name,
-          style: TextStyle(color: _kWeekDay[weekday].color),
-        ),
-      );
+class WeekdayView extends StatelessWidget {
+  WeekdayView(this.weekday);
+  final int weekday;
 
-  Widget _buildDay(
-      BuildContext context, bool isInside, DateTime date, DayInfo data) {
-    final color = isInside ? _kWeekDay[date.weekday].color : Colors.grey;
+  @override
+  Widget build(BuildContext context) {
+    final date = DateTime.now();
+    return Center(
+      child: Text(
+        DateFormat.E()
+            .format(date.add(Duration(days: -date.weekday + weekday))),
+        style: TextStyle(
+            color: Provider.of<AppModel>(context)
+                .preferenceRepository
+                .colorWeekDay(weekday)),
+      ),
+    );
+  }
+}
+
+class DayView extends StatelessWidget {
+  DayView(this.isInside, this.date, this.data);
+  final bool isInside;
+  final DateTime date;
+  final DayInfo data;
+
+  @override
+  Widget build(BuildContext context) {
+    final preferenceRepository =
+        Provider.of<AppModel>(context).preferenceRepository;
+    final color = isInside
+        ? preferenceRepository.colorWeekDay(date.weekday)
+        : preferenceRepository.colorOtherThanThisMonth;
     final now = DateTime.now();
     final isToday = now.difference(date).inDays == 0 && now.day == date.day;
     final info = data;
     final isHover = info != null ? info.isHover : false;
-    final borderColor = isHover ? Colors.red : Colors.grey;
+    final borderColor = isHover
+        ? Theme.of(context).accentColor
+        : preferenceRepository.colorBorder;
     return DragTarget<Palette>(
       builder: (context, candidateData, rejectedData) {
         final dayHeader = List<Widget>();
@@ -169,7 +226,10 @@ class CalendarPage extends StatelessWidget {
         if (isToday) {
           dayHeader.add(Expanded(
             child: Center(
-              child: Container(width: 20, height: 10, color: Colors.red),
+              child: Container(
+                  width: 20,
+                  height: 10,
+                  color: preferenceRepository.colorToday),
             ),
           ));
         }
@@ -218,14 +278,12 @@ class CalendarPage extends StatelessWidget {
         );
       },
       onWillAccept: (paletteData) {
-        print('on will accept ${date.toString()}');
         var info = (data ?? DayInfo())..isHover = true;
         Provider.of<CalendarModel>(context)
             .post(UpdateCalendarEvent(date, info));
         return true;
       },
       onAccept: (paletteData) {
-        print('on accept ${date.toString()}');
         var info = (data ?? DayInfo())..isHover = false;
         if (paletteData is ColorPalette) {
           info.color = paletteData.color.value;
@@ -236,7 +294,6 @@ class CalendarPage extends StatelessWidget {
             .post(UpdateCalendarEvent(date, info));
       },
       onLeave: (paletteData) {
-        print('on leave ${date.toString()}');
         var info = (data ?? DayInfo())..isHover = false;
         Provider.of<CalendarModel>(context)
             .post(UpdateCalendarEvent(date, info));
@@ -244,16 +301,13 @@ class CalendarPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPalette(int mode) =>
-      mode == 0 ? IconPalleteView() : ColorPalleteView();
-
   final _formKey = GlobalKey<FormState>();
   Widget _buildBottomSheet(BuildContext context, DateTime date, DayInfo data) =>
       Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
-            Jiffy(date).yMMMd,
+            DateFormat.yMMMd().format(date),
             style: TextStyle(fontSize: _kTitleTextSize),
           ),
           Align(
@@ -342,12 +396,6 @@ class IconPalette extends Palette {
   const IconPalette(this.path);
   final String path;
 }
-
-// class DayInfo {
-//   var willAccept = false;
-//   var color = Colors.transparent;
-//   var icons = List<String>();
-// }
 
 const double _kHeight = 80;
 const int _kCount = 2;

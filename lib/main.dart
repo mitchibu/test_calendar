@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:package_info/package_info.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'model.dart';
 import 'repo/db.dart';
+import 'repo/preference.dart';
 import 'ui/splash/main.dart';
 import 'ui/top/main.dart';
 
@@ -14,9 +16,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(context) => FutureProvider<AppModel>(
         builder: (_) async {
-          await Future<dynamic>.delayed(Duration(milliseconds: 2000));
           return AppModel(
             packageInfo: await PackageInfo.fromPlatform(),
+            preferenceRepository:
+                PreferenceRepository(await SharedPreferences.getInstance()),
             databaseRepository: DatabaseRepository(),
           );
         },
